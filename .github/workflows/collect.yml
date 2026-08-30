@@ -1,0 +1,40 @@
+name: 🔄 Auto Collect Telegram Proxies
+
+on:
+  schedule:
+    # Run every 4 hours automatically
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  collect-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Run Proxy Collector
+        run: |
+          go run main.go -collect -output mixed_iran.txt
+
+      - name: Commit and Push Updated mixed_iran.txt
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add mixed_iran.txt
+          if git diff --staged --quiet; then
+            echo "No new changes to commit."
+          else
+            git commit -m "chore(collector): auto-update mixed_iran.txt with fresh Telegram proxies [skip ci]"
+            git push origin main
+          fi

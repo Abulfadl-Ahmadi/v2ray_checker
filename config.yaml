@@ -18,4 +18,4 @@ database:
 collector:
   channels_file: "./channels.csv"
   subscription_urls:
-    - "https://raw.githubusercontent.com/Abulfadl-Ahmadi/V2rayCollector/refs/heads/main/mixed_iran.txt"
+    - "https://raw.githubusercontent.com/Abulfadl-Ahmadi/v2ray_checker/main/mixed_iran.txt"

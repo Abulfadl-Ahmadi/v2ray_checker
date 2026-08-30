@@ -4,11 +4,13 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"v2ray_checker/pkg/api"
+	"v2ray_checker/pkg/collector"
 	"v2ray_checker/pkg/config"
 	"v2ray_checker/pkg/storage"
 	"v2ray_checker/pkg/worker"
@@ -18,12 +20,40 @@ func main() {
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 
 	configFile := flag.String("config", "config.yaml", "Path to configuration YAML")
+	collectOnly := flag.Bool("collect", false, "Run single collection pass from Telegram and output to file/stdout")
+	outputFile := flag.String("output", "mixed_iran.txt", "Output file path when running in -collect mode")
 	flag.Parse()
 
 	// 1. Load Configuration
 	cfg, err := config.LoadConfig(*configFile)
 	if err != nil {
 		gologger.Fatal().Msgf("Failed to load config: %v", err)
+	}
+
+	// If collect-only mode is active, scrape channels, write output and exit cleanly
+	if *collectOnly {
+		gologger.Info().Msg("Running in single-pass Telegram Collector mode...")
+		scraped, err := collector.ScrapeChannels(cfg.Collector.ChannelsFile, 40)
+		if err != nil {
+			gologger.Fatal().Msgf("Collector failed: %v", err)
+		}
+
+		var configs []string
+		seen := make(map[string]bool)
+		for _, s := range scraped {
+			if !seen[s.RawLink] {
+				seen[s.RawLink] = true
+				configs = append(configs, s.RawLink)
+			}
+		}
+
+		gologger.Info().Msgf("Scraped %d unique proxy configs. Writing to %s...", len(configs), *outputFile)
+		content := strings.Join(configs, "\n") + "\n"
+		if err := os.WriteFile(*outputFile, []byte(content), 0644); err != nil {
+			gologger.Fatal().Msgf("Failed to write output file: %v", err)
+		}
+		gologger.Info().Msgf("Successfully saved %d proxy configs to %s", len(configs), *outputFile)
+		return
 	}
 
 	// 2. Initialize Database Store
