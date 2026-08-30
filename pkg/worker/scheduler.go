@@ -58,15 +58,30 @@ func (w *Worker) runCycle() {
 	startTime := time.Now()
 	gologger.Info().Msg("=== [Worker] Starting collection & test cycle ===")
 
-	// 1. Scrape Telegram Channels
-	scraped, err := collector.ScrapeChannels(w.cfg.Collector.ChannelsFile, 40)
-	if err != nil {
-		gologger.Error().Msgf("Failed to scrape channels: %v", err)
-	} else {
-		gologger.Info().Msgf("Scraped %d unique proxy raw configs from Telegram", len(scraped))
+	// 1. Scrape Telegram Channels (if channels.csv exists and is configured)
+	var scraped []collector.RawScrapedNode
+	if w.cfg.Collector.ChannelsFile != "" {
+		tgScraped, err := collector.ScrapeChannels(w.cfg.Collector.ChannelsFile, 40)
+		if err != nil {
+			gologger.Warning().Msgf("Telegram scraper note: %v", err)
+		} else {
+			gologger.Info().Msgf("Scraped %d unique proxy raw configs from Telegram", len(tgScraped))
+			scraped = append(scraped, tgScraped...)
+		}
 	}
 
-	// 2. Aggregate with existing DB nodes
+	// 2. Fetch from GitHub Action / Subscription URLs (Iran filter-proof)
+	if len(w.cfg.Collector.SubscriptionURLs) > 0 {
+		subScraped, err := collector.FetchSubscriptionURLs(w.cfg.Collector.SubscriptionURLs)
+		if err != nil {
+			gologger.Error().Msgf("Failed to fetch subscription URLs: %v", err)
+		} else {
+			gologger.Info().Msgf("Fetched %d unique configs from subscription sources", len(subScraped))
+			scraped = append(scraped, subScraped...)
+		}
+	}
+
+	// 3. Aggregate with existing DB nodes
 	existing, err := w.store.GetAllNodesForCheck()
 	if err == nil {
 		gologger.Info().Msgf("Loaded %d existing nodes from DB for re-verification", len(existing))

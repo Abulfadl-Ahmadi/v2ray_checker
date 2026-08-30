@@ -28,7 +28,8 @@ type Config struct {
 	} `yaml:"database"`
 
 	Collector struct {
-		ChannelsFile string `yaml:"channels_file"`
+		ChannelsFile     string   `yaml:"channels_file"`
+		SubscriptionURLs []string `yaml:"subscription_urls"`
 	} `yaml:"collector"`
 }
 
@@ -45,6 +46,9 @@ func DefaultConfig() *Config {
 	}
 	cfg.Database.Path = "./data/v2ray.db"
 	cfg.Collector.ChannelsFile = "./channels.csv"
+	cfg.Collector.SubscriptionURLs = []string{
+		"https://raw.githubusercontent.com/Abulfadl-Ahmadi/V2rayCollector/refs/heads/main/mixed_iran.txt",
+	}
 	return cfg
 }
 

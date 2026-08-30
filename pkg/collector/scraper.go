@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -145,5 +146,91 @@ func crawlForV2ray(doc *goquery.Document, channelLink string, hasAllMessagesFlag
 		}
 	})
 
+	return nodes
+}
+
+// FetchSubscriptionURLs fetches proxy configs from raw URLs (e.g. GitHub raw mixed_iran.txt)
+func FetchSubscriptionURLs(urls []string) ([]RawScrapedNode, error) {
+	var mu sync.Mutex
+	var results []RawScrapedNode
+	seen := make(map[string]bool)
+
+	var wg sync.WaitGroup
+	for _, subURL := range urls {
+		subURL = strings.TrimSpace(subURL)
+		if subURL == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(targetURL string) {
+			defer wg.Done()
+
+			req, err := http.NewRequest("GET", targetURL, nil)
+			if err != nil {
+				return
+			}
+			req.Header.Set("User-Agent", "v2ray_checker/1.0")
+
+			resp, err := httpClient.Do(req)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				if resp != nil {
+					_ = resp.Body.Close()
+				}
+				return
+			}
+			defer resp.Body.Close()
+
+			nodes := parseRawLinesFromReader(resp.Body, targetURL)
+
+			mu.Lock()
+			for _, n := range nodes {
+				if !seen[n.RawLink] {
+					seen[n.RawLink] = true
+					results = append(results, n)
+				}
+			}
+			mu.Unlock()
+		}(subURL)
+	}
+
+	wg.Wait()
+	return results, nil
+}
+
+func parseRawLinesFromReader(r io.Reader, source string) []RawScrapedNode {
+	var nodes []RawScrapedNode
+	bodyBytes, err := io.ReadAll(r)
+	if err != nil {
+		return nodes
+	}
+
+	content := string(bodyBytes)
+	lines := strings.Split(content, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "//") || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		for proto, reg := range myregex {
+			re := regexp.MustCompile(reg)
+			matches := re.FindAllString(line, -1)
+			for _, match := range matches {
+				match = strings.TrimSpace(match)
+				if match == "" {
+					continue
+				}
+				match = strings.TrimSuffix(match, "#")
+				match = strings.TrimSuffix(match, "%3A%40")
+				nodes = append(nodes, RawScrapedNode{
+					Protocol: proto,
+					RawLink:  match,
+					Source:   source,
+				})
+			}
+		}
+	}
 	return nodes
 }
