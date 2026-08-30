@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  v2ray-checker:
+    build: .
+    container_name: v2ray_checker_service
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./channels.csv:/app/channels.csv
+      - ./config.yaml:/app/config.yaml
+    environment:
+      - TZ=Asia/Tehran

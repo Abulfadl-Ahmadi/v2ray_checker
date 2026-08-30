@@ -1,0 +1,19 @@
+server:
+  port: ":8080"
+
+worker:
+  check_interval: 15m
+  concurrency: 30
+  timeout_sec: 4
+  max_failures: 3
+
+probe:
+  urls:
+    - "https://1.1.1.1/cdn-cgi/trace"
+    - "https://www.google.com/generate_204"
+
+database:
+  path: "./data/v2ray.db"
+
+collector:
+  channels_file: "./channels.csv"
