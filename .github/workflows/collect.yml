@@ -23,9 +23,9 @@ jobs:
           go-version: '1.22'
           check-latest: true
 
-      - name: Run Proxy Collector
+      - name: Run Proxy Collector & Live Health Checker
         run: |
-          go run main.go -collect -output mixed_iran.txt
+          go run main.go -collect -check -output mixed_iran.txt
 
       - name: Commit and Push Updated mixed_iran.txt
         run: |
