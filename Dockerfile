@@ -2,8 +2,8 @@ FROM golang:alpine AS builder
 
 WORKDIR /app
 
-# Configure Iranian GOPROXY Mirror (ParsPack)
-ENV GOPROXY=https://goproxy.parspack.com,https://proxy.golang.org,direct
+# Configure robust global and fallback GOPROXY mirrors
+ENV GOPROXY=https://goproxy.io,https://goproxy.cn,https://proxy.golang.org,direct
 
 COPY go.mod go.sum ./
 RUN go mod download
